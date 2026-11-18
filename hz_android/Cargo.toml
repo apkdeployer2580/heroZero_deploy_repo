@@ -1,0 +1,59 @@
+[package]
+name = "hz_android"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# The Android app: GameActivity + winit + softbuffer around the J2ME core, running
+# 영웅서기 Zero from the bundled `herozero.jar`. Written new for this game (Phase 1, 2026-10-22);
+# the generic parts — present path, worker pacing, atomic record writes, JNI plumbing — follow
+# hero2NativeAPP's `wie_android` and hero3NativeAPP's `database.rs`, nothing of their game code.
+
+[lib]
+# GameActivity loads System.loadLibrary("main") -> the cdylib must be libmain.so. The same name
+# is in MainActivity.java and in the manifest's android.app.lib_name; all three or none.
+name = "main"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[dependencies]
+# `release_max_level_info` compiles every debug!/trace! in the graph out of release builds —
+# the JVM interpreter and wie_midp log every guest call at debug.
+log = { version = "^0.4", features = ["release_max_level_info"] }
+# `log` bridges the core's tracing events to android_logger (logcat).
+tracing = { version = "^0.1", features = ["log", "release_max_level_info"] }
+async-trait = { version = "^0.1" }
+
+# Render path. winit brings android-activity (GameActivity) transitively; do NOT depend on
+# android-activity directly.
+winit = { version = "^0.30", features = ["android-game-activity"] }
+softbuffer = { version = "^0.4" }
+
+hz_java = { path = "../hz_java" }
+hz_patches = { path = "../hz_patches" }
+
+wie_backend = { git = "https://github.com/dlunch/wie.git" }
+wie_j2me = { git = "https://github.com/dlunch/wie.git" }
+wie_util = { git = "https://github.com/dlunch/wie.git" }
+
+# The music (Phase 4c, 2026-10-22): the game's songs are AAC-LC in MP4. symphonia's reader and
+# decoder are pure Rust and decode on the wie-music thread; only those two parts are built. Not
+# Android-only: the host tests and the `music_survey` decode through it too.
+symphonia = { version = "0.5.5", default-features = false, features = ["aac", "isomp4"] }
+# 세이브 옮기기 (B4): the transfer file is a plain stored zip — the version the core already locks.
+zip = { version = "^8.6", default-features = false }
+
+# Audio output (Phase 4a, 2026-10-22): rodio -> cpal -> AAudio on Android, -> WASAPI on the PC
+# (hz_desktop, 2026-10-29), the versions hero2NativeAPP ships (rodio 0.22 / cpal 0.17). `playback`
+# is the device and mixer; default features off keeps the symphonia decoders out (the core decodes
+# the WAVs itself). ⛔ Not for the windows-gnu host (the probe, `cargo test` with the dlltool shim):
+# cpal's `windows 0.62` is raw-dylib there and the exe segfaults BEFORE `main` (measured
+# 2026-10-29 — winit and softbuffer with the same shim run fine). The desktop build is MSVC
+# (`build_desktop.ps1`); on any other host `audio::spawn_audio_thread` is a silent stub.
+[target.'cfg(any(target_os = "android", target_env = "msvc"))'.dependencies]
+rodio = { version = "^0.22", default-features = false, features = ["playback"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = { version = "^0.15" }
+jni = { version = "^0.21" }
+ndk-context = { version = "^0.1" }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Short enough for a launcher label; the subtitle 진홍의 사도 is in the icon art itself. -->
+    <string name="app_name">영웅서기 Zero</string>
+</resources>

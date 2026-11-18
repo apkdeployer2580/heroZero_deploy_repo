@@ -1,0 +1,43 @@
+[package]
+name = "hz_probe"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Headless runner for 영웅서기 Zero: boots the J2ME jar with no window and no audio, on a
+# virtual clock, plays a key script and dumps frames as PNG. The development loop's
+# centre — anything reproduced here reproduces on the device, because it is the same
+# emulator core the APK will run.
+
+[features]
+default = ["quiet_release"]
+# Compile every `debug!`/`trace!` in the graph out, so the probe measures the code the
+# APK runs. Build with `--no-default-features` to get the wie/JVM debug trace back.
+quiet_release = ["log/release_max_level_info", "tracing/release_max_level_info"]
+
+[dependencies]
+async-trait = { version = "^0.1" }
+tracing = { version = "^0.1" }
+# ⛔ No `ansi` (a default feature). With it the exe died before `main` with 0xC0000005 on
+# this windows-gnu host (measured 2026-10-21); without it, it runs. `ansi` is the only path
+# to nu-ansi-term -> windows-sys 0.61 (raw-dylib, import lib made by build_probe.ps1's
+# dlltool shim). Which import is bad was NOT pinned — re-measure before re-enabling.
+tracing-subscriber = { version = "=0.3.20", default-features = false, features = ["std", "fmt", "env-filter"] }
+log = { version = "^0.4" }
+md5 = { version = "^0.8" }
+# PNG output for `--dump`. Already in the tree (wie_backend decodes the game's PNGs with
+# it), so this adds no new crate to the lock.
+image = { version = "^0.25", features = ["png"], default-features = false }
+
+# Same git deps the app uses -> the workspace [patch] redirects them to vendor/wie.
+hz_java = { path = "../hz_java" }
+hz_patches = { path = "../hz_patches" }
+
+# `--exp-test` / `--drop-money` drive guest methods from inside the field-tick hook.
+java_class_proto = { git = "https://github.com/dlunch/RustJava.git" }
+jvm = { git = "https://github.com/dlunch/RustJava.git" }
+wie_jvm_support = { git = "https://github.com/dlunch/wie.git" }
+
+wie_backend = { git = "https://github.com/dlunch/wie.git" }
+wie_j2me = { git = "https://github.com/dlunch/wie.git" }
+wie_util = { git = "https://github.com/dlunch/wie.git" }

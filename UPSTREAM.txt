@@ -1,0 +1,92 @@
+UPSTREAM.txt — where this tree's code came from, and what was changed
+=====================================================================
+Written 2026-10-21, at the first commit.
+
+This repository is NOT original work top to bottom. It is:
+
+  * seeded from a sibling project (heroZeroNativeAPP <- hero2NativeAPP <- hero3NativeAPP),
+    which is itself
+  * an application built on top of five VENDORED FORKS of other people's crates.
+
+Nothing here is redistributed under a licence of this project's choosing. Each vendored
+tree keeps its own upstream licence file, and those licences govern it.
+
+
+1. THIS APPLICATION
+-------------------
+heroZeroNativeAPP was seeded from hero2NativeAPP at commit
+    cfb5989792a5315e7214eacd5e65600b673b4aea (2026-10-21)
+by exporting that commit's TRACKED files (`git archive`), not its working tree — hero2 had
+uncommitted world-map edits at the time, and none of them came across. History was NOT
+carried over: hero2's 869 MB of history holds hero2's art and RE, none of it relevant here.
+
+What came across, byte-identical to cfb5989 at the first commit:
+    vendor/**                 the five forks below
+    tools/dlltool_shim.rs     windows-gnu host build fix
+    .cargo/config.toml, rustfmt.toml, .editorconfig
+What was written new for this game: everything else (hz_probe, hz_patches, tools_re,
+the build scripts, the docs).
+
+The game itself — 영웅서기 Zero 진홍의 사도 (EA Mobile China port, Korean text) — is not
+ours. The original jar is in this repository (android_app/app/src/main/assets/herozero.jar)
+only so the app builds; it is not covered by anything here and no claim is made to it.
+
+
+2. VENDORED FORKS  (`vendor/`, excluded from the cargo workspace)
+----------------------------------------------------------------
+Each is redirected in place of the upstream crate by a `[patch]` block in `Cargo.toml`.
+Their hero2/hero3-era changes are documented in hero2NativeAPP's Cargo.toml and
+UPSTREAM.txt; this repository's OWN changes are marked in the code with
+
+    ★ heroZero fork (<date>):
+
+so `grep -rn "heroZero fork" vendor/` lists every divergence from the seed.
+
+  vendor/wie          <- https://github.com/dlunch/wie.git
+                         MIT (Copyright 2020 Inseok Lee) — vendor/wie/LICENSE
+                         The WIPI/KTF/LGT/J2ME emulator. This game uses its J2ME path
+                         (wie_j2me + wie_midp + wie_jvm_support).
+                         heroZero changes: J2meOptions (app-property overrides + class
+                         transformer + extra host class protos), next_wakeup_ms for J2ME,
+                         MIDP API gaps; the executor
+                         no longer counts a task waiting on an event as runnable (real
+                         wakers); J2ME canvases get Nokia-style key codes (KeyCodeProfile);
+                         RecordStore.setRecord throws RecordStoreException when the store
+                         refuses the write (was reported as success); MIDlet.notifyDestroyed
+                         reaches Platform::exit (was a stub); net.wie.MediaPlayer is the MIDP
+                         Player for every content type — PCM WAV plays through
+                         Audio::play_pcm, MP4/MIDI files are media streams the sink decodes
+                         (AudioSink::media_*, one at a time, Audio::media_owner).
+
+  vendor/rustjava     <- https://github.com/dlunch/RustJava.git  (rev 62cf0c6)
+                         MIT (Copyright 2020 Inseok Lee) — vendor/rustjava/LICENSE
+                         The JVM. For this game it INTERPRETS the bytecode.
+                         heroZero changes: invokespecial resolves up the superclass chain
+                         (JVMS §5.4.3.3); java.lang/java.io API gaps; FileInputStream.read([BII)
+                         writes the array's bytes directly (store_array widened each byte to a
+                         24-byte JavaValue: ~700 MB at boot for a 27 MB jar).
+
+  vendor/arm32_cpu    <- https://github.com/dlunch/arm32_cpu.git
+                         MIT — vendor/arm32_cpu/LICENSE
+                         The ARM interpreter. Not on this game's path (no ARM guest);
+                         present because the wie crates depend on it.
+
+  vendor/softbuffer   <- softbuffer 0.4.8 (crates.io)
+                         MIT OR Apache-2.0 — vendor/softbuffer/LICENSE-MIT, LICENSE-APACHE
+                         The Android present path (hero2's no-alloc / one-store-per-pixel fix).
+
+  vendor/oxisynth     <- oxisynth 0.1.0 (crates.io)
+                         ⚠ LGPL-2.1 — vendor/oxisynth/LICENSE
+                         The MIDI synth (hero2's shared-instrument fix).
+
+⚠ THE LICENCE THAT IS NOT LIKE THE OTHERS. `oxisynth` is LGPL-2.1. Once the Android app
+links it statically, LGPL-2.1 §6 applies the moment an APK is handed to anyone else
+(offer the object files for relinking, or link dynamically). Decide before distributing,
+not after. This is a note, not a legal opinion.
+
+
+3. UPDATING A FORK
+------------------
+Automated dependency updates are deliberately not set up (hero2 measured an upstream
+type change breaking a vendored fork through a one-line lockfile bump). Update by hand,
+then the headless check must still pass:  .\build_probe.ps1 -Run

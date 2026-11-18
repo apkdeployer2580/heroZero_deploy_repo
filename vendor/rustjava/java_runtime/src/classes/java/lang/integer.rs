@@ -1,0 +1,125 @@
+use alloc::{format, string::ToString, vec};
+
+use java_class_proto::{JavaFieldProto, JavaMethodProto};
+use java_constants::MethodAccessFlags;
+use jvm::{ClassInstanceRef, Jvm, Result, runtime::JavaLangString};
+
+use crate::{RuntimeClassProto, RuntimeContext, classes::java::lang::String};
+
+// class java.lang.Integer
+pub struct Integer;
+
+impl Integer {
+    pub fn as_proto() -> RuntimeClassProto {
+        RuntimeClassProto {
+            name: "java/lang/Integer",
+            parent_class: Some("java/lang/Object"),
+            interfaces: vec!["java/lang/Comparable"],
+            methods: vec![
+                JavaMethodProto::new("<init>", "(I)V", Self::init, Default::default()),
+                JavaMethodProto::new("parseInt", "(Ljava/lang/String;)I", Self::parse_int, MethodAccessFlags::STATIC),
+                // ★ heroZero fork (2026-10-21): 영웅서기 Zero decodes its billing table with
+                // `parseInt(s, 16)` and reads numbers with `valueOf(String)` at startApp.
+                JavaMethodProto::new("parseInt", "(Ljava/lang/String;I)I", Self::parse_int_radix, MethodAccessFlags::STATIC),
+                JavaMethodProto::new("valueOf", "(Ljava/lang/String;)Ljava/lang/Integer;", Self::value_of_string, MethodAccessFlags::STATIC),
+                JavaMethodProto::new("valueOf", "(I)Ljava/lang/Integer;", Self::value_of, MethodAccessFlags::STATIC),
+                JavaMethodProto::new("intValue", "()I", Self::int_value, Default::default()),
+                JavaMethodProto::new("toString", "()Ljava/lang/String;", Self::to_string, Default::default()),
+                JavaMethodProto::new("toString", "(I)Ljava/lang/String;", Self::to_string_static, MethodAccessFlags::STATIC),
+                JavaMethodProto::new("toHexString", "(I)Ljava/lang/String;", Self::to_hex_string, MethodAccessFlags::STATIC),
+            ],
+            fields: vec![JavaFieldProto::new("value", "I", Default::default())],
+            access_flags: Default::default(),
+        }
+    }
+
+    async fn init(jvm: &Jvm, _: &mut RuntimeContext, mut this: ClassInstanceRef<Self>, value: i32) -> Result<()> {
+        tracing::debug!("java.lang.Integer::<init>({this:?}, {value:?})");
+
+        jvm.put_field(&mut this, "value", "I", value).await?;
+
+        Ok(())
+    }
+
+    async fn int_value(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<i32> {
+        tracing::debug!("java.lang.Integer::intValue({this:?})");
+
+        let value = jvm.get_field(&this, "value", "I").await?;
+
+        Ok(value)
+    }
+
+    async fn value_of(jvm: &Jvm, _: &mut RuntimeContext, value: i32) -> Result<ClassInstanceRef<Self>> {
+        tracing::debug!("java.lang.Integer::valueOf({value:?})");
+
+        let instance = jvm.new_class("java/lang/Integer", "(I)V", (value,)).await?;
+
+        Ok(instance.into())
+    }
+
+    async fn to_string(jvm: &Jvm, _: &mut RuntimeContext, this: ClassInstanceRef<Self>) -> Result<ClassInstanceRef<String>> {
+        tracing::debug!("java.lang.Integer::toString({this:?})");
+
+        let value: i32 = jvm.get_field(&this, "value", "I").await?;
+
+        let string = JavaLangString::from_rust_string(jvm, &value.to_string()).await?;
+
+        Ok(string.into())
+    }
+
+    async fn to_string_static(jvm: &Jvm, _: &mut RuntimeContext, value: i32) -> Result<ClassInstanceRef<String>> {
+        tracing::debug!("java.lang.Integer::toString({value:?})");
+
+        let string = JavaLangString::from_rust_string(jvm, &value.to_string()).await?;
+
+        Ok(string.into())
+    }
+
+    async fn parse_int(jvm: &Jvm, _: &mut RuntimeContext, s: ClassInstanceRef<String>) -> Result<i32> {
+        tracing::debug!("java.lang.Integer::parseInt({s:?})");
+
+        let s = JavaLangString::to_rust_string(jvm, &s).await?;
+
+        match s.parse() {
+            Ok(x) => Ok(x),
+            Err(_) => Err(jvm
+                .exception("java/lang/NumberFormatException", &format!("For input string: \"{s}\""))
+                .await),
+        }
+    }
+
+    /// Java's rules, not Rust's: radix 2..=36, an optional single leading `-` or `+`, at
+    /// least one digit, and overflow of `int` is an error. `i32::from_str_radix` matches
+    /// all of that except that it PANICS on a radix outside 2..=36, hence the guard.
+    async fn parse_int_radix(jvm: &Jvm, _: &mut RuntimeContext, s: ClassInstanceRef<String>, radix: i32) -> Result<i32> {
+        tracing::debug!("java.lang.Integer::parseInt({s:?}, {radix})");
+
+        if s.is_null() {
+            return Err(jvm.exception("java/lang/NumberFormatException", "null").await);
+        }
+        let s = JavaLangString::to_rust_string(jvm, &s).await?;
+
+        match (2..=36).contains(&radix).then(|| i32::from_str_radix(&s, radix as u32).ok()).flatten() {
+            Some(x) => Ok(x),
+            None => Err(jvm
+                .exception("java/lang/NumberFormatException", &format!("For input string: \"{s}\" under radix {radix}"))
+                .await),
+        }
+    }
+
+    async fn value_of_string(jvm: &Jvm, context: &mut RuntimeContext, s: ClassInstanceRef<String>) -> Result<ClassInstanceRef<Self>> {
+        tracing::debug!("java.lang.Integer::valueOf({s:?})");
+
+        let value = Self::parse_int(jvm, context, s).await?;
+
+        Self::value_of(jvm, context, value).await
+    }
+
+    async fn to_hex_string(jvm: &Jvm, _: &mut RuntimeContext, value: i32) -> Result<ClassInstanceRef<String>> {
+        tracing::debug!("java.lang.Integer::toHexString({value:?})");
+
+        let string = JavaLangString::from_rust_string(jvm, &format!("{value:x}")).await?;
+
+        Ok(string.into())
+    }
+}

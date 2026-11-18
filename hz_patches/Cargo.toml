@@ -1,0 +1,14 @@
+[package]
+name = "hz_patches"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# 영웅서기 Zero's OWN patches — the game-specific half, kept apart from the emulator forks
+# under vendor/ (which are shared lineage with hero2/hero3). Deliberately free of any wie or
+# JVM dependency: it hands the host plain data (app-property overrides) and a byte-in /
+# byte-out class transformer, so `cargo test -p hz_patches` runs on any host in seconds and
+# the probe and the APK apply the SAME table.
+
+[dependencies]
+md5 = { version = "^0.8" }

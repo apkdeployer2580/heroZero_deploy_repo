@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="영웅서기 Zero 진홍의 사도 레어·에픽·세트·가디언·85제 장비와 드랍 몬스터. 신규 아이템 포함.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="영웅서기 Zero 아이템">
+<meta property="og:description" content="레어 이상 장비 · 가디언 · 85제 · 드랍 몬스터">
+<title>영웅서기 Zero 아이템</title>
+<style>
+:root{color-scheme:light;--bg:#f5f6f8;--surface:#fff;--ink:#20242c;--muted:#687180;--line:#e3e6ec;--hover:#f8f9fc;--rare:#2a62a8;--epic:#996000;--set:#287047;--legend:#c2410c;--guard:#8a6d00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,"Malgun Gothic",sans-serif}
+main{max-width:1440px;margin:auto;padding:32px 24px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px}
+h1{margin:0;font-size:22px;letter-spacing:-.7px}
+.sub{margin:2px 0 0;color:var(--muted);font-size:12px}
+.search{display:flex;align-items:center;gap:12px}
+input{width:320px;max-width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
+input::placeholder{color:var(--muted)}
+input:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--legend);outline-offset:3px}
+#count{color:var(--muted);font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 16px}
+.sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font:inherit;font-size:13px;line-height:1.4;cursor:pointer}
+.chip:hover{color:var(--ink);border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip .n{font-size:11px;font-variant-numeric:tabular-nums;opacity:.7}
+.table-wrap{overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;text-align:left}
+th{background:var(--hover);padding:0;border-bottom:1px solid var(--line);white-space:nowrap}
+th button{width:100%;padding:13px 16px;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer;white-space:nowrap}
+th button:hover{color:var(--ink)}
+.arrow{margin-left:7px;color:var(--muted)}
+td{padding:15px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--hover)}
+.name{font-weight:600;min-width:170px}
+.tier{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid currentColor;border-radius:5px;font-size:11px;font-weight:600;line-height:18px;vertical-align:1px}
+.tier.t-가디언{color:var(--guard)}.tier.t-85제{color:var(--legend)}
+.grade,.type,.level{white-space:nowrap}
+.grade span{display:inline-block;padding:2px 8px;border-radius:5px;font-size:12px;font-weight:600;background:color-mix(in srgb,currentColor 9%,transparent)}
+.g1{color:var(--rare)}.g2{color:var(--epic)}.g3{color:var(--set)}.g4{color:var(--legend)}
+.level{font-variant-numeric:tabular-nums}
+.stats{min-width:200px;max-width:300px}
+.fx{color:var(--legend)}
+.drops{min-width:280px;max-width:520px}
+.drop-group+.drop-group{margin-top:8px}
+.mode{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+details summary{display:inline;cursor:pointer;color:var(--muted);font-size:12px}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{display:none}
+.empty{text-align:center;color:var(--muted);padding:48px}
+.na{color:var(--muted)}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#14171c;--surface:#1c2027;--ink:#e6e9ee;--muted:#9ca6b5;--line:#303640;--hover:#222730;--rare:#7fb0f0;--epic:#e0b75b;--set:#7ac59a;--legend:#fb9a5b;--guard:#e8cf6a}}
+@media(max-width:680px){main{padding:22px 12px 32px}header{align-items:flex-start;flex-direction:column;gap:14px}h1{font-size:20px}.search{width:100%}input{flex:1;width:auto;min-width:0}td{padding:12px}th button{padding:12px}.name{min-width:150px}.sep{display:none}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div><h1>영웅서기 Zero 아이템</h1><p class="sub" id="sub"></p></div>
+<div class="search"><input id="search" type="search" aria-label="아이템 검색" placeholder="아이템, 효과, 몬스터, 모드 검색" autocomplete="off"><span id="count" role="status" aria-live="polite"></span></div>
+</header>
+<div class="filters" id="filters" role="group" aria-label="등급과 종류"></div>
+<div class="table-wrap">
+<table aria-label="레어 이상 장비">
+<thead><tr>
+<th scope="col" aria-sort="none"><button type="button" data-sort="n">아이템<span class="arrow" aria-hidden="true">↕</span></button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="g">등급<span class="arrow" aria-hidden="true">↕</span></button></th>
+<th scope="col" aria-sort="ascending"><button type="button" data-sort="t">종류<span class="arrow" aria-hidden="true">↑</span></button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="lv">레벨<span class="arrow" aria-hidden="true">↕</span></button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="stats">능력치<span class="arrow" aria-hidden="true">↕</span></button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="drops">드랍 몬스터<span class="arrow" aria-hidden="true">↕</span></button></th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</main>
+<script id="data" type="application/json">{{DATA}}</script>
+<script>
+const data = JSON.parse(document.getElementById('data').textContent);
+const grades = ['', '레어', '에픽', '세트', '전설'];
+const SHOWN = 12;
+const collator = new Intl.Collator('ko', { numeric: true });
+const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const normalize = value => value.normalize('NFKC').toLocaleLowerCase('ko').replace(/\s+/g, '');
+document.getElementById('sub').textContent = `레어 이상 장비 · 신규 가디언·85제 포함 · 앱 vC ${data.vc} 기준`;
+const items = data.items.map((item, order) => {
+  const statLines = [item.st, item.op, ...(item.fx || [])].filter(Boolean);
+  const drops = item.d.map(([mode, names]) => `${mode} ${names.join(', ')}`).join(' ');
+  return {...item, order, statLines, stats: statLines.join(' · '), drops,
+    searchText: normalize([item.n, grades[item.g], item.tier || '', item.tn, item.lv, statLines.join(' '), drops].join(' '))};
+});
+const search = document.getElementById('search');
+const rows = document.getElementById('rows');
+const count = document.getElementById('count');
+const filterBox = document.getElementById('filters');
+const groups = {
+  grade: [
+    {key: '85', label: '85제', title: '가디언 모드의 신규 전설 장비', test: item => item.tier === '85제'},
+    {key: 'guard', label: '가디언', title: 'LV 80 가디언 장비 — LV 75 이상 몬스터', test: item => item.tier === '가디언'},
+    {key: 'set', label: '세트', test: item => item.g === 3},
+    {key: 'epic', label: '에픽', test: item => item.g === 2 && !item.tier},
+    {key: 'rare', label: '레어', test: item => item.g === 1},
+  ],
+  kind: [
+    {key: 'axe', label: '도끼', test: item => item.t === 0},
+    {key: 'great', label: '양손검', test: item => item.t === 1},
+    {key: 'sword', label: '도검', test: item => item.t === 2},
+    {key: 'blunt', label: '둔기', test: item => item.t === 3},
+    {key: 'dagger', label: '단검', test: item => item.t === 4},
+    {key: 'gun', label: '총', test: item => item.t === 5},
+    {key: 'bayonet', label: '총검', test: item => item.t === 6},
+    {key: 'shield', label: '방패', test: item => item.t === 7},
+    {key: 'glove', label: '장갑', title: '경장갑 · 중장갑', test: item => item.t === 8 || item.t === 9},
+    {key: 'helm', label: '투구', test: item => item.t === 10},
+    {key: 'acc', label: '장신구', test: item => item.t === 11},
+    {key: 'armor', label: '갑옷', title: '경갑옷 · 중갑옷', test: item => item.t === 12 || item.t === 13},
+    {key: 'boots', label: '신발', title: '경신발 · 중신발', test: item => item.t === 14 || item.t === 15},
+  ],
+};
+const chip = kind => `<button type="button" class="chip" data-kind="${kind.key}" aria-pressed="false"${kind.title ? ` title="${escapeHtml(kind.title)}"` : ''}>${escapeHtml(kind.label)}<span class="n">${items.filter(kind.test).length}</span></button>`;
+filterBox.innerHTML = `<button type="button" class="chip" data-kind="all" aria-pressed="true">전체<span class="n">${items.length}</span></button>`
+  + groups.grade.map(chip).join('') + '<span class="sep" aria-hidden="true"></span>' + groups.kind.map(chip).join('');
+const picked = new Set();
+filterBox.addEventListener('click', event => {
+  const button = event.target.closest('.chip');
+  if (!button) return;
+  const key = button.dataset.kind;
+  if (key === 'all') picked.clear();
+  else if (picked.has(key)) picked.delete(key);
+  else picked.add(key);
+  filterBox.querySelectorAll('.chip').forEach(other => other.setAttribute('aria-pressed', String(other.dataset.kind === 'all' ? picked.size === 0 : picked.has(other.dataset.kind))));
+  render();
+});
+let sortKey = 't';
+let sortDirection = 1;
+const value = (item, key) => key === 't' ? item.order : item[key];
+function names(list) {
+  const text = escapeHtml(list.slice(0, SHOWN).join(', '));
+  if (list.length <= SHOWN) return text;
+  return `${text}<details><summary> 외 ${list.length - SHOWN}종</summary>, ${escapeHtml(list.slice(SHOWN).join(', '))}</details>`;
+}
+function render() {
+  const terms = search.value.normalize('NFKC').toLocaleLowerCase('ko').trim().split(/\s+/).filter(Boolean);
+  const tests = Object.values(groups).map(group => group.filter(kind => picked.has(kind.key)).map(kind => kind.test)).filter(group => group.length);
+  const filtered = items.filter(item => tests.every(group => group.some(test => test(item))) && terms.every(term => item.searchText.includes(normalize(term))));
+  filtered.sort((a, b) => {
+    const x = value(a, sortKey), y = value(b, sortKey);
+    const comparison = typeof x === 'number' ? x - y : collator.compare(x, y);
+    return comparison * sortDirection || a.order - b.order;
+  });
+  count.textContent = `${filtered.length} / ${items.length}`;
+  rows.innerHTML = filtered.length ? filtered.map(item => {
+    const drops = item.d.length ? item.d.map(([mode, list]) => `<div class="drop-group"><span class="mode">${escapeHtml(mode)}</span>${names(list)}</div>`).join('') : '<span class="na">드랍 없음</span>';
+    const stats = item.statLines.map((line, i) => i >= item.statLines.length - (item.fx || []).length ? `<span class="fx">${escapeHtml(line)}</span>` : escapeHtml(line)).join('<br>');
+    return `<tr><td class="name">${escapeHtml(item.n)}${item.tier ? `<span class="tier t-${item.tier}">${item.tier}</span>` : ''}</td><td class="grade"><span class="g${item.g}">${grades[item.g]}</span></td><td class="type">${escapeHtml(item.tn)}</td><td class="level">${item.lv}</td><td class="stats">${stats || '—'}</td><td class="drops">${drops}</td></tr>`;
+  }).join('') : '<tr><td class="empty" colspan="6">검색 결과가 없습니다.</td></tr>';
+}
+document.querySelectorAll('[data-sort]').forEach(button => {
+  button.addEventListener('click', () => {
+    if (sortKey === button.dataset.sort) sortDirection *= -1;
+    else { sortKey = button.dataset.sort; sortDirection = 1; }
+    document.querySelectorAll('[data-sort]').forEach(other => {
+      const active = other === button;
+      other.parentElement.setAttribute('aria-sort', active ? (sortDirection === 1 ? 'ascending' : 'descending') : 'none');
+      other.querySelector('.arrow').textContent = active ? (sortDirection === 1 ? '↑' : '↓') : '↕';
+    });
+    render();
+  });
+});
+search.addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

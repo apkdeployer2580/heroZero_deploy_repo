@@ -1,0 +1,55 @@
+Use case: style-transfer.
+Create the FINAL production world-map background for heroZero, a lavish highly detailed hand-painted fantasy RPG world map, 16:9 landscape, ideally 3840x2160.
+IMAGE 1 is the EDIT TARGET and strict geographical layout. IMAGE 2 is STYLE AND QUALITY REFERENCE ONLY (hero2 final art). Repaint image 1 completely to match image 2's premium illustrated diorama quality: dramatically sculpted mountain ridges with snow nestled into crevices, densely layered individually painted conifers and broadleaf trees, convincing sunlit limestone sea cliffs, sapphire ocean with turquoise shallows and detailed white surf, rich rust-red mesas and strata, believable tiny architectural settlements integrated into terrain. Warm northwest sunlight and atmospheric depth, crisp intricate detail, harmonious restrained fantasy colors. No simplistic triangular sprites, flat clip-art houses, repeated circular trees, noisy computer heightmaps. Keep top-down oblique map viewing angle and whole-map composition, not a perspective landscape.
+CRITICAL preserve image 1's exact coastline arrangement, snowy northwest continent, isolated snowy northern island, large central inner sea and eastern peninsula. Every landmark must remain at the exact normalized coordinates below (game UI labels overlay these). Do not copy the layout or central giant castle from style reference. Landmarks should be beautifully detailed but compact, approx 3% of canvas width, so do not consume adjacent locations.
+ROAD TOPOLOGY IS A HARD CONSTRAINT: ONLY paint the 22 listed land connections as narrow natural warm-earth hiking tracks. Each road must visibly reach the specified endpoint; roads may meet ONLY at listed nodes, no invented shortcuts, extra branching trails, decorative roads, coast-hugging ring roads, or extra connections. No land roads across sea. Northern island connects O to P ONLY. No paths at all to arena R or tunnel mouth N (underground routes handled by UI). Roads through snow are exposed warm dirt with snowbanks; roads through forest are clear narrow corridors. Do not draw any dashed line, marker or sea route. All terrain art, no text or lettering, no UI, no border, no compass, no pins, no node circles, no labels.
+Asset: the world map of a fantasy RPG (영웅서기 Zero), one finished painting, landscape 16:9, at least
+2560x1440 (3840x2160 if possible). Use the attached layout picture as the exact composition: the same
+coastlines, the same inner sea, every place where it is. Repaint it with much finer detail — hand-painted
+terrain, individual trees, layered rock, readable landmarks, natural light. Do not merely upscale it.
+No text, no letters, no labels, no markers, no pins, no grid, no UI, no graphic lines: the game draws the
+names, the highlighted roads, the cursor and the ship routes itself, on top of this picture.
+
+Coordinates are percent of the width / height from the upper left; centre each landmark exactly there:
+A (15.0%, 19.0%) the hero's home: a small snowy village of brown-roofed houses (an orphanage among them).
+B (31.0%, 20.0%) a snowfield with snowy mountains and frosted pines.
+C (15.5%, 35.5%) a snowy clearing where five dirt roads meet.
+D (9.0%, 43.5%) green sea cliffs over the western coast.
+E (4.0%, 32.0%) a dark cave mouth in snowy rock.
+F (32.0%, 38.5%) a stone fortress town on red rock.
+G (40.5%, 33.0%) a small concrete bunker door in red rock (an underground laboratory).
+H (13.0%, 56.0%) rolling forested hills.
+I (28.0%, 64.0%) white houses with blue roofs on the inner sea's shore.
+J (29.0%, 74.5%) a brick gatehouse in a wall across the road.
+K (44.0%, 80.0%) a marsh of reeds and pools.
+L (44.5%, 88.0%) dry dirt country with scattered rocks.
+M (43.0%, 96.8%) one dark hut hidden in the forest (a hideout).
+N (51.5%, 68.0%) a stone arch, the mouth of a tunnel that runs under the sea to the north.
+O (56.0%, 32.0%) bleak snowy land with bare dead trees, across the water.
+P (57.5%, 16.0%) a snow-covered temple.
+Q (61.0%, 79.0%) a large white harbour city with blue roofs, docks and moored ships.
+R (66.5%, 90.5%) an arena (colosseum) beside the city.
+S (74.5%, 79.0%) a golden-leaved forest.
+T (72.5%, 61.5%) green sea cliffs along a hard road.
+U (81.5%, 47.5%) a harbour town with orange roofs, docks and ships.
+V (88.0%, 70.0%) a red rock plain scattered with bones.
+W (88.5%, 54.5%) broken bunker ruins on red rock (a ruined laboratory).
+X (96.5%, 65.0%) ancient ruins with stairs going underground, on red rock.
+
+Dirt roads, painted INTO the ground (worn earth, grassy or snowy verges, no hard strokes), joining ONLY
+these 22 pairs — no other branches, no shortcuts, no roads on water:
+A-C; C-D; C-H; C-F; C-B; F-G; M-L; I-H; I-J; Q-K; Q-S; U-T; D-E; D-H; K-J; K-L; T-V; T-S; S-V; V-W; V-X; O-P.
+Not painted: K-N and O-N run UNDER the sea (only the tunnel mouth at N shows); Q-R is inside the city.
+
+An inner sea fills the middle: an ellipse about (57.0%, 51.5%), radii 17.5% x 12.5%, open water with no place in it. Ships cross it from Q to I, U and F (the game draws those routes): paint docks and moored ships
+at Q and U, nothing on the open water. The land north of the inner sea (O, P) is snowy, across the water; so is the north-west around A, B, C, E.
+
+
+Extra care for routes easily missed: A-C must reach the snowy village; C-B ends in snowfield at (31%,20%); D-E climbs northwest to cave at (4%,32%) with no E-C branch; F-G goes northeast to bunker; O-P is a single path northward on island; M-L ends at hut near bottom (43%,96.8%). K-Q joins marsh eastward to blue-roof city; Q-R is NOT a visible dirt connection. D-H and C-H are distinct paths meeting at forest-hill H. Paint the full canvas edge to edge.
+
+FINAL CORRECTION PASS
+Precise-object-edit of this fantasy world map. Keep the outstanding illustration quality, all coastlines, mountain silhouettes, trees, lighting, colors, composition and 22 authorized road connections unchanged. Make ONLY these surgical corrections:
+1. On the EASTERN red-rock plateau, REMOVE the curved dirt trail that leaves the orange-roof harbour town (around 82% width, 45% height), heads east along the northern rim of the red mesa at approximately y=47%, then curves south to the ruined bunker around (88.5%,54.5%). Fill that ENTIRE unwanted connecting arc seamlessly with layered red rock, natural scrub, stones, grasses, matching the terrain. This harbour must have ONLY ONE exterior trail: southwest along the green coastal cliffs to (72.5%,61.5%). The ruined bunker must have ONLY ONE trail: south to the bone-strewn plains junction at (88%,70%). Do NOT erase those two legitimate paths. No orange harbour to bunker shortcut.
+2. REMOVE the invented tiny cave/arched entrance in the NORTHWEST snowfield at approximately (30%,19%). Replace it with a peaceful snowy clearing and a few frosted pines. The dirt path from the five-road snowy junction at (15.5%,35.5%) must still end at the clearing at (31%,20%). Keep the real large western cave at (4%,32%).
+3. Verify the tunnel mouth on the southern cape at (51.5%,68%) is isolated: only a small rock apron directly outside its door, no connecting dirt trail to the marsh or nearby city. The arena around (66.5%,90.5%) is also surrounded by grass, no exterior trail.
+NO other roads or branches may be added. No labels, letters, markers, icons, UI or borders. Preserve full 16:9 canvas and detail. This is the final game background, not a presentation.

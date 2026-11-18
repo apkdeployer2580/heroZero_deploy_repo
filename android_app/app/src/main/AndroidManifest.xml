@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The game's own vibration setting (MIDP Display.vibrate). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!--
+      NO INTERNET permission, on purpose: this app is offline-only (HEROZERO_REMAKE_PLAN.md §1.4).
+      The game's only network traffic is QQ telemetry and SMS billing; without the permission the
+      platform makes certain neither can leave the phone.
+
+      allowBackup=false: the saves are app-private RecordStores; a cloud/adb restore must not
+      silently resurrect another install's characters over these.
+
+      The launcher icon (@mipmap/ic_launcher) is generated from the game's title logo at build
+      time by tools_re/gen_app_icon.py — it is game art and never committed.
+    -->
+    <application
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:hasCode="true">
+
+        <!-- Lets `simpleperf` from the adb shell profile the RELEASE .so (Android 10+). -->
+        <profileable android:shell="true" />
+
+        <!--
+          세이브 옮기기 (B4, hero2's): 「보내기」 hands the transfer file to the share sheet (카카오톡,
+          Quick Share, Drive …) through this provider — read only, only for the one file the intent
+          names (grantUriPermissions, not exported), and it can serve nothing but the cache folder
+          res/xml/save_share_paths.xml maps, where MainActivity.exportToCache makes that file. The
+          saves themselves (files/) are never reachable through it. The authority suffix is
+          MainActivity.SAVE_SHARE_AUTHORITY.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.saveshare"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/save_share_paths" />
+        </provider>
+
+        <!--
+          Landscape by default (사용자 결정 2026-10-22); the in-game option switches to portrait
+          and hz_android/src/java.rs re-requests the orientation at boot.
+
+          The activity must never be recreated, doubled or finished while the process lives: the
+          game cannot be handed to a new instance (MainActivity.onCreate/onDestroy end the
+          process instead). So it is singleTask (any start reaches the one instance), every
+          configuration change is taken in place (split screen and foldables change
+          smallestScreenSize, the font settings fontScale/fontWeightAdjustment), and predictive
+          back is off — on Android 16 with targetSdk 36 it is on by default and the back key
+          finished the activity (S25 2026-10-27); on the legacy path back is a key the game gets
+          as RSK (hz_android/src/keys.rs).
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|density|uiMode|navigation|touchscreen|fontScale|fontWeightAdjustment|locale|layoutDirection|colorMode|mcc|mnc"
+            android:enableOnBackInvokedCallback="false"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/AppTheme">
+
+            <!-- GameActivity loads the native library named here (libmain.so). -->
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="main" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

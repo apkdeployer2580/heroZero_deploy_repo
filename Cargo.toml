@@ -1,0 +1,66 @@
+[workspace]
+resolver = "2"
+
+members = ["hz_android", "hz_desktop", "hz_java", "hz_patches", "hz_probe", "hz_render"]
+# `exclude` keeps the vendored forks below from being swept in as workspace members: a
+# path dependency inside the workspace directory becomes one automatically otherwise,
+# which would drag their dev-dependency trees and host builds into every `cargo build`.
+exclude = ["vendor/arm32_cpu", "vendor/wie", "vendor/softbuffer", "vendor/rustjava", "vendor/oxisynth"]
+
+# ── VENDORED FORKS ──────────────────────────────────────────────────────────────────
+# All five came across from hero2NativeAPP at commit cfb5989 (see UPSTREAM.txt), and the
+# reasons each exists are recorded there and in hero2's own Cargo.toml. They are shared
+# lineage, not shared files: a fix made here is NOT in hero2 and vice versa.
+#
+# What matters for 영웅서기 Zero specifically: it is a plain J2ME MIDlet, so it runs on
+# `wie_j2me` + `wie_midp` + `vendor/rustjava` (bytecode interpreted by the JVM), and
+# neither the ARM interpreter nor any KTF/LGT path is on its hot path. They stay because
+# the crates depend on each other, not because this game uses them.
+
+[patch."https://github.com/dlunch/arm32_cpu.git"]
+arm32_cpu = { path = "vendor/arm32_cpu" }
+
+[patch."https://github.com/dlunch/RustJava.git"]
+classfile = { path = "vendor/rustjava/classfile" }
+java_class_proto = { path = "vendor/rustjava/java_class_proto" }
+java_constants = { path = "vendor/rustjava/java_constants" }
+java_runtime = { path = "vendor/rustjava/java_runtime" }
+jvm = { path = "vendor/rustjava/jvm" }
+jvm_rust = { path = "vendor/rustjava/jvm_rust" }
+
+[patch."https://github.com/dlunch/wie.git"]
+wie_backend = { path = "vendor/wie/wie_backend" }
+wie_ktf = { path = "vendor/wie/wie_ktf" }
+wie_lgt = { path = "vendor/wie/wie_lgt" }
+wie_skt = { path = "vendor/wie/wie_skt" }
+wie_j2me = { path = "vendor/wie/wie_j2me" }
+wie_util = { path = "vendor/wie/wie_util" }
+wie_core_arm = { path = "vendor/wie/wie_core_arm" }
+wie_jvm_support = { path = "vendor/wie/wie_jvm_support" }
+wie_midp = { path = "vendor/wie/wie_midp" }
+wie_wipi_c = { path = "vendor/wie/wie_wipi_c" }
+wie_wipi_java = { path = "vendor/wie/wie_wipi_java" }
+wie_skvm = { path = "vendor/wie/wie_skvm" }
+
+# softbuffer: the Android present path (no per-frame alloc+memset, one store per pixel).
+# oxisynth: the MIDI synth (instruments shared instead of deep-copied per zone).
+# Both only matter once the Android host exists; unused patches are harmless until then.
+[patch.crates-io]
+softbuffer = { path = "vendor/softbuffer" }
+oxisynth = { path = "vendor/oxisynth" }
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+license = "Proprietary"
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+lto = true
+# The whole app is one hot loop (here: the JVM's bytecode interpreter). Splitting it into
+# parallel codegen units costs inlining exactly there. Trade build time for that loop.
+# NB: deliberately NOT `panic = "abort"` — it breaks `cargo test`, and the Android host
+# unwinds across the JNI boundary.
+codegen-units = 1

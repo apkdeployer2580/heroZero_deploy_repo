@@ -1,0 +1,426 @@
+# Game-specific binary patches consumed by `wie_core_arm::install_binary_patches`.
+#
+# Each `[[entry]]` is either:
+#   - hash-keyed: `hash` is the MD5 of the main guest binary (KTF
+#     `client.bin`, LGT `binary.mod`, etc.). Matched and installed on boot.
+#   - pattern-only (hash omitted): generic patterns that apply to any binary
+#     matching the bytes. Hash-keyed entries take priority.
+#
+# Hook `pc`/`exit_pc` MUST have the Thumb bit (LSB=1); ARM-mode hooks are
+# not supported. Stack offsets are signed and measured from R7 (Thumb
+# frame pointer).
+#
+# A hook is either pc-based (`pc = ...`) or pattern-based (`pattern = ...`),
+# never both. Pattern tokens are whitespace-separated and each token is one of:
+#   - `??`        — any byte (unnamed wildcard)
+#   - `xx`        — literal hex byte
+#   - `{dst}`     — 1 byte, Thumb1 `SUBS Rn, #imm8` imm8 → `-(b as i8) as i32`
+#   - `{src}`     — same, src offset
+#   - `{len}`     — same, len offset (omit capture + provide `len_offset` to pin)
+#   - `{exit_b}`  — TWO consecutive tokens, encoding a Thumb `B imm11` instruction
+#
+# `inline_copy` fixed fields:
+#   - `len_offset`   — R7-relative offset of the length variable. Required if
+#                      the pattern has no `{len}` capture; forbidden if it does.
+#   - `spill_back`   — after the copy, also write back `dst += len`, `src += len`,
+#                      `len = 0` into their stack slots. Set true when the code
+#                      after the loop re-reads those variables.
+#
+# `inline_copy` requires the loop to use a DOWN-counter (length stored on the
+# stack and decremented to 0 to exit). UP-counter loops are NOT compatible —
+# zeroing the slot just resets the index and the loop restarts.
+#
+# In addition to hooks, an entry may contain `[[entry.patch]]` items that
+# rewrite raw bytes at install time (no SVC, no runtime dispatch). A patch is
+# either pc-based (`pc = 0x...`, requires the entry's `hash`) or pattern-based
+# (`pattern = "..."`, applied at every match).
+#   - `bytes`  : whitespace-separated hex literals. Length >= 1. May not
+#                contain the SVC #0x80 instruction (`80 df` LE).
+#   - `expect` : optional original bytes; same length as `bytes`. Strongly
+#                recommended — install fails fast on a build mismatch.
+#   - `offset` : pattern-only. Bytes are written at `match_addr + offset`.
+#                Default 0. Range `0 ..= pattern_len - bytes_len`.
+# Patch patterns may use `??`, hex literals, and `0b<bits>` BitMatch with no
+# register placeholders. They may NOT use `{dst}`/`{src}`/`{len}`/`{exit_b}`
+# captures or `s`/`d`/`c` BitMatch placeholders — patches have no captures to
+# consume.
+#
+# Install order: patches first, hooks second. Patch ↔ patch and patch ↔ hook
+# SVC overlap fails the install. A hash-keyed entry that produces zero
+# patches/hooks is fatal (likely a stale entry against an updated binary);
+# generic (hash-less) entries warn and continue.
+
+[[entry]]
+name = "Generic compiler library / inline copy patterns"
+
+# Per-frame byte-by-byte memcpy with `src/dst/count` in registers.
+# Loop:
+#   LDRB R3, [Rsrc];   STRB R3, [Rdst]
+#   MOV  R3, Rcount;   ADDS Rsrc, #1; ADDS Rdst, #1; SUBS Rcount, #1
+#   CMP  R3, #0;       BGT loop
+# `Rcount` holds `remaining - 1`, so actual byte count is `Rcount + 1`.
+# Seen as the dominant per-frame hot path in mgh2's `copy_offscreen_to_screen`.
+# Bit-pattern tokens use `s`/`d`/`c` to capture src/dst/count register fields;
+# `exit_pc` is auto-derived as `match_end | 1` (right past the BGT).
+[[entry.hook]]
+kind = "reg_inline_copy"
+pattern = "0b00sss011 78 0b00ddd011 70 0b00ccc011 1c 01 0b00110sss 01 0b00110ddd 01 0b00111ccc 00 2b f7 dc"
+count_offset = 1
+
+# Thumb -O0 byte copy: `*dst++ = *src++` with `dst`/`src`/`len` all on the
+# stack. Src is reached via single-instruction `SUBS R4, R7, #4` (`3c 1f`),
+# so `src_offset` is pinned.
+[[entry.hook]]
+kind = "inline_copy"
+pattern = "3d 1c {dst} 3d 29 68 3c 1f 22 68 08 1c 13 1c 1b 78 03 70 01 32 22 60 01 31 29 60 {exit_b} {exit_b}"
+src_offset = -4
+len_offset = -12
+spill_back = true
+
+# RVCT __rt_memcpy / __rt_memset reached through a Thumb `BX PC` thunk.
+# Prefix `BX PC; NOP; STMFD SP!, {R0, LR}; CMP R2, #N` is specific to the
+# standard library helpers; the trailing `CMP R2` immediate is what
+# distinguishes them (`#3` for memcpy, `#4` for memset).
+[[entry.hook]]
+kind = "memcpy"
+pattern = "78 47 00 00 01 40 2d e9 03 00 52 e3"
+
+[[entry.hook]]
+kind = "memset"
+pattern = "78 47 00 00 01 40 2d e9 04 00 52 e3"
+
+# RVCT Thumb strcpy / strlen with Mycroft's NUL-byte detection
+# (`0xFEFEFEFF`/`0x80808080` magic words).
+[[entry.hook]]
+kind = "strcpy"
+pattern = "70 b5 0b 1c 03 43 03 22 13 40 04 1c"
+
+[[entry.hook]]
+kind = "strlen"
+pattern = "30 b5 03 23 03 40 04 1c 00 2b"
+
+# ---------------------------------------------------------------------------
+# 영웅서기 3 (Hero3) — client.bin
+# ---------------------------------------------------------------------------
+[[entry]]
+name = "Hero3 client.bin"
+hash = "3792a476ae92663e5dcdf320bb388b31"
+
+# The game's palettised sprite blitter. It never calls MC_grpDrawImage: it takes
+# the screen framebuffer pointer once and rasterises the entire world through
+# this one routine, one indexed pixel at a time. A sampled guest profile of real
+# field play (2026-08-06) puts 26% of ALL guest instructions inside its two inner
+# loops (0x111078 = 17.8%, 0x11138c = 8.0%), which makes it the single largest
+# cost in a frame and the reason heavy maps stutter.
+#
+# The hook replaces the first instruction, so the handler sees the caller's SP and
+# reads the 13 arguments straight off it. Anything it cannot reproduce exactly —
+# 4bpp, rotations, clipped-to-zero widths, unreadable memory — runs the displaced
+# prologue and falls through to the original code. See `binary_patches/blit565.rs`.
+[[entry.hook]]
+kind = "blit565"
+pc = 0x110fe5
+
+# ---------------------------------------------------------------------------
+# 영웅서기 3 (Hero3) — LGT binary.mod, Ver 01.00.07 (in-game "VER 1.0.4")
+# ★ THIS IS THE ARCHIVE WE SHIP. `app_info` in
+# `android_app/app/src/main/assets/hero3_fixed.zip` reads `Ver:01.00.07` and its
+# `binary.mod` hashes to 6a352944…. The in-game splash says "VER 1.0.4" (an EA Korea
+# build stamp at .rodata 0x5b28c), which is NOT the package version — package 01.00.04
+# shows "VER 1.0.1" in-game. Do not let the two numbering schemes swap the entries:
+# every hook below is verified against 6a352944 and only that binary.
+# ---------------------------------------------------------------------------
+# The LGT carrier build is a DIFFERENT compile of the game (no byte-level overlap
+# with the KTF client.bin — even the save DB name strings differ), so nothing from
+# the KTF entry transfers by address. This entry is the start of the LGT port.
+#
+# The blitter was found the same way the KTF one was: a sampled guest profile of
+# the probe driving the opening battle scene (2026-08-10) puts the top non-idle
+# leaf PCs at 0x2e59c/0x2e5b4/0x2e5c2 (~16%) — the inner loops of one function
+# whose prologue is at 0x2dd7c. Instruction-level comparison against the KTF
+# blitter shows IDENTICAL semantics: 13 args in the same order, fmt 0x0b = 4bpp
+# high-nibble-first / 0xc = 8bpp, index 0 transparent, RGB565 palette stores,
+# pixels = data + 2*palette_len + 9, 4bpp row bytes = ceil(pitch/2), odd srcX
+# starts on a LOW nibble. The one difference is the sprite descriptor: +8/+0xc
+# are direct pointers (KTF: allocator handles) — hence kind = "blit565_lgt".
+[[entry]]
+name = "Hero3 binary.mod (LGT)"
+hash = "6a352944bb43c0789ca9f4b6f0702f4b"
+
+[[entry.hook]]
+kind = "blit565_lgt"
+pc = 0x2dd7d
+
+# `blendRect` — the semi-transparent rectangle fill (MIGRATION_LGT.md §2.17).
+#
+# Profiling a field run put ~21 % of all guest samples inside its inner loop
+# (0x2b790..0x2b816), spread evenly over ~35 instructions: ~44 guest instructions PER
+# PIXEL. Every menu panel, dialogue bar, HUD panel and fade goes through it, so a
+# full-screen 240x320 fade is ~3.4 M guest instructions against ~1.0 M for a whole
+# ordinary field frame. That is the frame-drop the player reported, and it is a
+# different function from the sprite blitter above.
+#
+# `pc` is the OUTER row loop's first instruction (`ldr r4,[sp,#0x28]`, halfword 0x9c0a,
+# branched back to from 0x2b836), so one hook finishes the whole rectangle. Everything
+# it needs is already on the frame there — 0x2b784 has just stored the row count.
+#
+# `exit_pc` is the function's shared tail (`add sp,#0x5c; pop {r4-r7}; pop {r0}; bx r0`).
+# It is reached by the two DO-NOTHING early exits — 0x2b71a when alpha is 0 and 0x2b776
+# when the height is not positive — which is the proof that it cannot depend on any
+# register or stack state the loop would have produced.
+#
+# Not added to the 01.00.04 entry below: that revision's `.text` is 0x144 bytes longer
+# and this address was only ever verified on 6a352944. Locate it there before adding it.
+[[entry.hook]]
+kind = "blend565_lgt"
+exit_pc = 0x2b8d7
+pc = 0x2b787
+
+# The LUT-blended palettised sprite blitter — the CRITICAL-HIT / skill-effect path
+# (MIGRATION_LGT.md §2.20). Third and last of the game's per-pixel loops: `blit565` above
+# draws opaque sprites and `blend565` fills translucent rectangles, so a translucent
+# SPRITE was landing on neither, which is why the player still saw a frame drop whenever a
+# critical flash was on screen after those two shipped.
+#
+# `pc` is the function ENTRY (`push {r4-r7,lr}`, halfword 0xb5f0) — the same shape as the
+# blit565 hook, so declining runs the displaced push and resumes two bytes on. Found by
+# differencing a probe profile of the intro battle (frames ~3000..4200) against one that
+# stops before it: the fight doubles the samples in an evenly spread cluster at
+# 0x2ea38..0x2eba6, which is this function's transform-0 pixel loop.
+#
+# The three tables are the arguments the host cannot derive:
+#   alpha_map = .data byte table at the literal in 0x2ec64 — translates the per-sprite
+#               blend argument into a plane index.
+#   blend_t   = .bss planes at the literal in 0x2ec68, indexed by that translated level.
+#   blend_a   = .bss planes at the literal in 0x2ec6c, indexed by the per-call level; the
+#               guest skips this second stage entirely when that level is > 0xfe.
+# Both plane sets are BUILT AT RUNTIME by the game, so the hook reads them out of guest
+# memory per call rather than caching anything across calls.
+[[entry.hook]]
+kind = "blit_lut565_lgt"
+alpha_map = 0x14001bf
+blend_t = 0x150f8cc
+blend_a = 0x150eccc
+pc = 0x2e8c5
+
+# `tintRect` — the per-pixel LUT COLOUR TRANSFORM of a rectangle already on screen, and
+# the REAL cost of a critical hit (PLAY_FEEDBACK_FIXES.md 49차). It is the function
+# immediately after `blendRect`, starting at 0x2b8f8, and nothing was hooking it.
+#
+# The three hooks above did not touch it because it is not a blitter: it takes no source
+# pixels at all. Measured on the device (S25, vc79) with a per-tick hitch report and the
+# guest PC profiler, which is what finally separated it from everything else:
+#
+#   normal tick   25 ms   inst   0.65 M   blit 569/576   hot pc 0x8=60% (idle)
+#   crit   tick  124 ms   inst  16.05 M   blit 573/582   hot pc 0x2b998 0x2b99a 0x2b99e …
+#
+# Same blits, same ~140 K pixels, same ~1,300 SVCs, 3 allocations, no sound parse — 25x
+# the guest instructions and nothing else moved. Every hot PC sits in 0x2b98e..0x2b9ea.
+# (This also retires the standing §2.20 suspicion that the blitlut565 transform 4~8
+# fallback was to blame: during that same combat the host drew 98.8 % of blits and the
+# transform refusals ran at ~5/s against ~10,600 calls/s.)
+#
+# `pc` is the OUTER row loop's first instruction (`ldr r1,[sp,#8]`, halfword 0x9902,
+# branched back to from 0x2b9fc), so one hook finishes the whole rectangle — the same
+# shape, and the same reasoning, as the blend565_lgt hook above.
+#
+# `exit_pc` is the function's shared tail (`add sp,#0x34; pop {r4-r7}; pop {r0}; bx r0`).
+# It is reached by three DO-NOTHING early exits — 0x2b912 when level is 255, 0x2b97e when
+# the height is not positive, 0x2ba02 likewise on the 32-bit path — which is the proof it
+# cannot depend on any register or stack state the loop would have produced.
+#
+# `blend_a` is the byte table the pixel loop indexes as
+# `LUT + level*1024 + channel*32 + sel`, read from the literal at 0x2baa8. It is the SAME
+# 0x150eccc the blit_lut565_lgt hook above already takes as `blend_a` — an independent
+# cross-check, since that hook derived the identical level/selector layout from a
+# different function. The game builds those planes at runtime, so the hook reads the
+# call's plane out of guest memory rather than caching it.
+#
+# Not added to the 01.00.04 entry below: only ever verified against 6a352944.
+[[entry.hook]]
+kind = "tint_rect565_lgt"
+blend_a = 0x150eccc
+exit_pc = 0x2ba9d
+pc = 0x2b983
+
+# The "동기화" popup, killed at its source (PLAY_FEEDBACK_FIXES 4번).
+#
+# Player: "그냥 로딩끝나면 별다른 안내없이 나타나면 될거같아. 팝업을 자꾸띄우려고하니까 이거
+# 이슈가 발생하는거같아." Repro: enter the warehouse, leave to the slot screen, come
+# back -> the box appears; then paging in the cash shop makes it reappear every turn,
+# because the client replays its whole open sequence (04 3d / 05 3d / 05 14 / 05 3f) per
+# page turn.
+#
+# THE HANDLER (cat4 op 0x3d, the save-commit ack), verified byte for byte:
+#   0x483a  ldrb r3,[r5,#0xb]      ; status
+#   0x483e  cmp  r3,#0
+#   0x4840  bne  0x485a            ; `0b d1`  <- patched
+#   0x4842..0x4858   status == 0: netbox().flag(+0xc) = 1, then strcpy(box+0x10, msg+0xd)
+#                    -- this ARMS a latch; the cat5 handler (0x13834) turns it into the box
+#   0x485a..0x486a   status != 0: flag = 0, showModal(mode 3) -- a blocking WAIT
+#   0x486c..0x4884   BOTH arms fall here and the client SENDS `05 3d 00`
+#
+# Patching the branch to an unconditional `b 0x486c` skips both arms: no latch, no modal,
+# and the `05 3d 00` still goes out byte for byte. That send is the frame that asks the
+# server for the warehouse list, so a cat5 round trip ALWAYS follows -- and the cat5
+# handler's latch-not-set path is what writes boxMode = 0, i.e. it CLOSES the
+# "슬롯 정보 서버에 저장중입니다." WAIT the client raised before uploading. Net effect is
+# exactly what the player asked for: loading ends, the list appears, nothing to dismiss.
+#
+# Encoding: target 0x486c, so offset = 0x486c - (0x4840 + 4) = 0x28, imm11 = 0x14,
+# Thumb B = 0xE014 = `14 e0`. `expect` pins the original `bne`, so a different build fails
+# the install instead of corrupting an unrelated instruction.
+#
+# SCOPE: 0x4840 is reachable only from cat == 4 && op == 0x3d. The SAME latch is also armed
+# by cat5 op 0x06 -- the 오브 결합 result toast at 0x13abc -- which keeps working untouched.
+# The ack itself is NOT withheld (33차 infinite-load); only the box is skipped.
+#
+# ⚠ RESIDUAL RISK, watch for it: if any path ever leaves the mode-3 WAIT up with no cat5
+# frame behind it, there is no longer a dismissible box to replace it. Remove this one entry
+# to revert.
+[[entry.patch]]
+pc = 0x4840
+bytes = "14 e0"
+expect = "0b d1"
+
+# ── 16TH ORB ROW: the 소켓확장 item's home (2026-08-14) ──────────────────────────
+#
+# The player asked for the socket-expansion item to be picked out of the NETWORK
+# WAREHOUSE and pointed at a piece of equipment, "오브처럼". The game already has that
+# exact flow and it is gated on ONE byte: `0x7674 cmp r3,#0x10` reads the WIRE-FED
+# category of the highlighted warehouse row, and a match is the only thing that makes the
+# context menu 4 rows instead of 3 — row 3 being 오브결합 (flat label table
+# 0x5b404 + panel*0x10e + row*0xa). Nothing downstream re-reads the category: the row-3
+# handler at 0x724e just stores the row's u64, 0x7608 validates only the TARGET
+# (cat <= 0xc), and the sender at 0xc474 re-reads nothing. So the server can serve the
+# socket item AS an orb and the whole picker comes for free — no client UI work.
+#
+# What is NOT free is the row's NAME. The item panel resolves it as `dbPtr[cat][idx]`
+# out of `res/dat/i16_dat`, which ships 15 orbs (0x00..0x0e), and the orb table is
+# `alloc(0xb4<<1)` = 360 B = exactly 15 x 0x18 with NO bounds check in any reader
+# (0x532e8, 0x4f164). Serving idx 0x0f against the stock binary is a wild pointer read
+# on the very first list draw. `tools_re/strip_orb_slot_text.py` appends a real 16th
+# record (소켓확장) to the asset; these three bytes are what make the guest SEE it.
+#
+# ⚠ ALL FOUR SHIP TOGETHER — the asset row and these three patches. `expect` pins each
+# original byte, and a mismatch is a FatalError, so a drifted build refuses to boot
+# instead of quietly overrunning the heap. That is the intended failure mode.
+#
+# ★ Why patches and not an edit to `binary.mod`: this entry is keyed by that file's MD5.
+# Editing it would stop matching, and every hook below — blit565, blend565, blitlut565 —
+# would silently stop installing, costing a third to two-thirds of the guest-instruction
+# budget. Patching at load time keeps the hash intact.
+#
+# Row count for category 0x10, in the 19-byte per-category const table at VA 0x5e474
+# (`ldrsb` at 0x53eca = the parse loop's entry guard, and at 0x53f86 = its continue test).
+[[entry.patch]]
+pc = 0x5e484
+bytes = "10"
+expect = "0f"
+
+# The orb table's backing allocation, a hardcoded immediate — `movs r0,#0xb4` feeding a
+# `lsls #1` at 0x53748..0x53752. 0xb4<<1 = 360 = 15 x 0x18; 0xc0<<1 = 384 = 16 x 0x18.
+# Unlike the 13 equipment tables (0x5370e) this one does NOT derive its size from the
+# count table, which is why the byte above is necessary but not sufficient.
+[[entry.patch]]
+pc = 0x53748
+bytes = "c0"
+expect = "b4"
+
+# Teardown bound, `cmp r3,#0xf` at 0x52744 — its own hardcoded copy of the count. Left at
+# 15 the 16th row's two strings are never freed. Harmless per session, wrong on principle,
+# and one byte to fix.
+[[entry.patch]]
+pc = 0x52744
+bytes = "10"
+expect = "0f"
+
+# ── THE ORB HOOKS ARE ROLLED BACK (2026-08-14). Do not re-add without reading this. ──
+#
+# Three hooks lived here for one day: `orb_sum_lgt` (pc 0x133e5) and two `orb_name_lgt`
+# (pc 0x6c0b / 0x6c4d). They made an item carry orbs of DIFFERENT kinds — summing their
+# bonuses and chaining their names. The player asked for the feature and then asked for it
+# back out; this comment is why it cannot be made to work, so nobody re-derives it.
+#
+# The blocker is the GAME'S DATA MODEL, not the hook addresses (all three were correct and
+# device-proven: the name hooks fired 889x in one session with the right orb lists).
+#
+#   1. No per-socket storage exists ANYWHERE. All three item representations — the 60-byte
+#      inventory instance, the 20-byte warehouse wire record, the 20-byte equipped-slot
+#      record — carry only (total sockets, filled count, ONE orb id). Even the socket-gem
+#      row drawer 0x415c4 takes just (total, filled); it never learns which orbs.
+#   2. ★ THE SAVE CARRIES ONE ORB ID. The save-load deserialiser 0x1a2fc restores
+#      +0x3b3/+0x3b6/+0x3b8/+0x3bc/+0x3c5/+0x3c6/+0x3c8/+0x3c9 and then calls 0x528f0,
+#      which RECOMPUTES +0x3cc/+0x3ce from that single id. A perfect in-memory sum is
+#      erased by the next save load, always.
+#   3. The inventory name and the detail panel's effect line both read the instance's one
+#      orb id, so a correct stat would still be displayed as a single orb. Device-confirmed:
+#      after withdrawing, both the name and the stat show only the last orb.
+#   4. Covering it would mean hooking the withdraw path, the save-load recompute, six panel
+#      recompute sites (four of which have their own guest bug — they feed the ITEM INDEX
+#      into orbTable[X*0x18+0x15], an out-of-table read), the inventory name path and the
+#      detail line. Each is a separate failure surface; two of the first two attempts
+#      shipped bugs (a hook that never executed, and a 48-vs-30 byte buffer overrun).
+#
+# Making it work needs a save-format change, which would put live player saves at risk.
+# The behaviour is therefore the ORIGINAL one: the last orb socketed is the item's orb, and
+# stacking MORE OF THE SAME KIND amplifies it via the game's own
+# `orbStat * (filled^2 + filled) / 2`.
+#
+# The Rust handlers and their tests are kept in `binary_patches/orbsum.rs` — they are
+# correct and expensive to re-derive. Re-adding these three entries plus re-enabling
+# `ProtocolHandler.ORB_LIST_ENABLED` in hero3_server turns the feature back on.
+
+# ---------------------------------------------------------------------------
+# 영웅서기 3 (Hero3) — LGT binary.mod, Ver 01.00.04 (in-game "VER 1.0.1")
+# ⚠ WE DO NOT SHIP THIS ONE. An earlier revision of this comment claimed it was "the
+# archive we actually ship" — that was wrong and it is the exact trap the two numbering
+# schemes set (see the 01.00.07 entry above). The shipped asset is 6a352944…; this
+# archive is not present in the repo at all. Kept so a 01.00.04 dump still gets blit565.
+# ---------------------------------------------------------------------------
+# A SECOND LGT revision of the same title (PID PD119037 / AID 0002865E), 520,308 B
+# against 01.00.07's 519,952 B — a minor revision, not another full recompile: the
+# whole blitter is byte-recognisable, just relocated by +0x74 (its `.text` is 0x144
+# bytes longer). Entry prologue `push {r4-r7,lr}; sub sp,#0x54` at 0x2ddf0.
+#
+# Re-derived on this binary rather than assumed (2026-08-10), and every clause of
+# the blit565_lgt contract holds instruction for instruction:
+#   0x2ddf0  push {r4-r7,lr} / sub sp,#0x54      the two bytes the hook replaces
+#   0x2de00  cmp r0,#0  -> bl 0x2e92e            dst == 0 early-out
+#   0x2de0a  cmp r2,#0  -> bl 0x2e92e            sprite == 0 early-out, r2 = [sp,#0x74]
+#                                                = caller sp+0xc = arg index 3 = `spr`
+#   0x2de12  ldr r0,[r2,#8]                      pixel block, DIRECT pointer (LgtDirect)
+#   0x2de18  ldrsh r3,[r2,#6] ; lsls r3,#1       2 * palette_len
+#   0x2de20  ldr r4,[r2,#0xc]                    palette, direct at the RGB565 entries
+#   0x2de24  adds r0,#8 ; 0x2de56 adds r4,r3,#1  pixels = data + 2*palette_len + 9
+#   0x2de28  ldrb r3,[r6] ; cmp r3,#0xb          fmt 0x0b = 4bpp, else -> 0x2e5d4
+#   0x2de2e  ldrh [r2] ; bmi -> (pitch+1)>>1     4bpp row bytes = ceil(pitch/2)
+#   0x2ddfe  ldr r5,[sp,#0x88] = caller sp+0x20  transform, i.e. the same 13 args
+# Confirmed at runtime the same way the 01.00.07 entry was: probe A/B with
+# `--hle 0` vs `--hle 1`, identical frame pixel hashes.
+[[entry]]
+name = "Hero3 binary.mod (LGT 01.00.04)"
+hash = "e76fafdd3e9e0057be8446cf7ab35577"
+
+[[entry.hook]]
+kind = "blit565_lgt"
+pc = 0x2ddf1
+
+# ── The critical-hit switch was BUILT, SHIPPED AND THEN REMOVED (2026-08-08) ──
+#
+# Nothing here is broken; the player simply did not want the feature ("그냥 1번 기능은 전부
+# 제거해줘"). The reverse engineering is worth keeping because it is the expensive part and it
+# is all device-proven — see PLAY_FEEDBACK_FIXES.md 29차/30차 for the full argument:
+#
+#   0x144534  the critical ROLL. rand(0,100) against a stat-derived chance clamped to 2..=60 %;
+#             its byte lands at `attacker + 0x203`.
+#   0x1445b8  the DAMAGE consumer of that byte: two instruction-identical blocks differing by
+#             one immediate, `+0x64` (100) at 0x1446c6 vs `+0x96` (150) at 0x144774 => x1.5.
+#   0x143cdc  the PRESENTATION block (per attack routine; twin at 0x143752). Entered by
+#             `bne` at 0x143c36 / 0x14370a, whose fall-through is 0x143c38 / 0x14370c.
+#             Plays `sd004_mf`, then calls the vibration wrapper.
+#   0x147a74  that wrapper, gated on the game's own 진동 option (`*(sl+0x16c)` byte 3). Its
+#             ONLY callers are 0x14376c and 0x143cf6, i.e. the two blocks above.
+#
+# Re-implementing means a hook at one of those and a settings row; the addresses above were
+# each verified against the shipped client.bin (md5 3792a476…) byte for byte.

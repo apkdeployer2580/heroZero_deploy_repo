@@ -1,0 +1,10 @@
+# Text is LF in the repository (hero2 lesson: a CRLF working tree against LF blobs made
+# every cross-tree diff and md5 lie). Binaries are never touched.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.bin binary
+*.jar binary
+*.zip binary
+*.sf3 binary

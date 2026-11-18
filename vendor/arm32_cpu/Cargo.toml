@@ -1,0 +1,36 @@
+[package]
+name = "arm32_cpu"
+description = "An emulator for the ARM32 cpu"
+authors = ["Sean Purcell <me@seanp.xyz>", "Daniel Prilik <danielprilik@gmail.com>", "Inseok Lee <me@dlun.ch>"]
+version = "0.1.0"
+license = "MIT"
+edition = "2018"
+readme = "README.md"
+documentation = "https://docs.rs/arm32_cpu"
+homepage = "https://github.com/dlunch/arm32_cpu"
+repository = "https://github.com/dlunch/arm32_cpu"
+keywords = ["emulator", "emulation", "arm"]
+categories = ["emulators"]
+
+[features]
+default = []
+serde-serialize = ["serde", "serde-big-array"]
+advanced_disasm = ["capstone"]
+# Per-instruction `trace!` in execute_arm / execute_thumb. OFF by default.
+#
+# A `trace!` that is merely *filtered* at runtime is not free: every guest
+# instruction pays an atomic load of `log::max_level()` plus a branch, and `pc` /
+# `inst_type` have to stay live across the whole prologue so the (never taken)
+# format path can use them. The game executes ~2.46M guest instructions per
+# rendered field frame, so this constant lands directly on the frame budget.
+# Behind a cfg the code is gone at compile time — no level check remains.
+#
+# Enable only when hand-stepping guest code. The `advanced_disasm` path is a
+# separate, independently gated tracer and is unaffected.
+insn_trace = []
+
+[dependencies]
+log = "0.4"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde-big-array = { version = "0.3", optional = true }
+capstone = { version = "0.6", optional = true }

@@ -1,0 +1,30 @@
+heroZeroNativeAPP — licence status
+==================================
+
+NO LICENCE IS GRANTED.
+
+The code written for it is
+Copyright (c) 2026 the repository owner, all rights reserved. No permission to use,
+copy, modify or distribute it is given to anyone.
+
+That is the DEFAULT position under copyright law, not a decision — it is written down
+here only so the absence of a licence file cannot be mistaken for permission. The
+owner may replace this file with a real licence at any time. Until they do, all rights
+in that code are reserved.
+
+
+What this file does NOT cover
+-----------------------------
+1. `vendor/` — five vendored forks of other people's crates, each governed by its own
+   upstream licence file (MIT, MIT-or-Apache-2.0, and one LGPL-2.1). They are NOT
+   relicensed by anything above. See `UPSTREAM.txt` for the list, the upstream URLs,
+   what each fork changes, and the LGPL-2.1 note that matters before any binary is
+   handed to a third party.
+
+2. 영웅서기 Zero 진홍의 사도 (EA Mobile port, Korean text) — the game. The original jar
+   and the fanfare rendered from it are included only so the app builds. They are not
+   covered by anything here and no claim is made to them.
+   Copyright in the game belongs to its rights holders.
+
+3. Reverse engineering notes (`HEROZERO_*.md`, the patch table in `hz_patches`) describe
+   that game's bytecode. They are observations about someone else's work.

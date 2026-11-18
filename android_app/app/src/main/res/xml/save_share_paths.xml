@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  세이브 옮기기 (B4): the ONE folder the share provider (AndroidManifest.xml) may serve.
+  MainActivity.exportToCache makes the transfer file in cache/save_share/ and nothing else lives
+  there; the saves themselves (files/) are never reachable through it.
+-->
+<paths>
+    <cache-path name="save_share" path="save_share/" />
+</paths>

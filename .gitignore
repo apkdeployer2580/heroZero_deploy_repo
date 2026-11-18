@@ -1,0 +1,68 @@
+# ── build output ────────────────────────────────────────────────────────────
+/target
+/target_*/
+**/target/
+/android_app/.gradle/
+/android_app/build/
+/android_app/app/build/
+/android_app/app/.cxx/
+/android_app/local.properties
+/android_app/app/src/main/jniLibs/
+*.log
+*.err
+*.apk
+*.aab
+**/__pycache__/
+
+# ── the game itself ─────────────────────────────────────────────────────────
+# 영웅서기 Zero is licensed content (EA Mobile / Hands-On Mobile). The original jar and the
+# fanfare rendered from it are in this repository (assets/herozero.jar, hz_fanfare.wav) only so
+# a clone builds as it is; other copies stay out.
+/android_app/app/src/main/assets/*.zip
+# …and the world map's picture (tools_re/hz_worldmap_draw.py, build_android.ps1): our own art, but a
+# 7 MB derived file — the generator is what is kept.
+/android_app/app/src/main/assets/*.rgb565
+# The detailed painting of that composition (art/hz_worldmap.png — the build prefers it) is kept.
+# …and the content by NAME, anywhere, with any suffix — the path rule above only guards
+# the one slot, and a tool that stages a copy elsewhere would slip past it.
+*.jar
+*.jad
+herozero*.zip*
+# …except Gradle's own wrapper, which is a build tool, and the one jar the build reads.
+!/android_app/gradle/wrapper/gradle-wrapper.jar
+!/android_app/app/src/main/assets/herozero.jar
+# The launcher icon is the game's title logo: generated at build time by
+# tools_re/gen_app_icon.py (build_android.ps1), never committed.
+/android_app/app/src/main/res/mipmap-*/
+# The original dump and the staged hand-off APKs. `dist/` is where the user drops
+# `영웅서기제로(최종버전).zip`; the build writes release copies here too.
+/dist/
+
+# ── probe output ────────────────────────────────────────────────────────────
+# `hz_probe --out` frame dumps: rendered game frames, i.e. game art. Never committed.
+/out
+/out_*/
+
+# ── signing ─────────────────────────────────────────────────────────────────
+# Keys are configured from OUTSIDE the repo (%USERPROFILE%\.gradle\gradle.properties);
+# these patterns are the second line of defence. A leaked release key lets anyone ship
+# an "update" to installed copies.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# ── one-off scripts ─────────────────────────────────────────────────────────
+# Name a throwaway `scratch_*` and it stays out; if it earns a place, move it into
+# tools_re/ and give it argv.
+scratch_*
+
+# ── editors / OS / machine-local ────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+desktop.ini
+.DS_Store
+.claude/settings.local.json
+.claude/worktrees/

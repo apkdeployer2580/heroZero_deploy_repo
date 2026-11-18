@@ -1,0 +1,33 @@
+[package]
+name = "hz_desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# 영웅서기 Zero on the PC (Windows, 2026-10-29): the APK's host crate (`hz_android` — its worker,
+# its HUD, its saves) in a winit window, the keyboard and the mouse for the thumbs, a gamepad
+# through gilrs. ⛔ Build with the MSVC toolchain (`build_desktop.ps1`): on the windows-gnu host the
+# audio stack (cpal → `windows 0.62`, raw-dylib through the dlltool shim) segfaults before `main`.
+
+[[bin]]
+name = "herozero"
+path = "src/main.rs"
+
+[dependencies]
+# The host crate's library is named `main` (the APK's libmain.so); here it is `hz_host`.
+hz_host = { package = "hz_android", path = "../hz_android" }
+hz_java = { path = "../hz_java" }
+hz_patches = { path = "../hz_patches" }
+# The core's key codes (the workspace [patch] redirects it to vendor/wie).
+wie_backend = { git = "https://github.com/dlunch/wie.git" }
+
+winit = { version = "^0.30" }
+log = { version = "^0.4", features = ["release_max_level_info"] }
+tracing = { version = "^0.1", features = ["release_max_level_info"] }
+# The probe's subscriber (no `ansi`: it killed the probe before `main` on the gnu host), plus the
+# `log` bridge the host crate's `log::` lines need.
+tracing-subscriber = { version = "=0.3.20", default-features = false, features = ["std", "fmt", "env-filter", "tracing-log"] }
+# A gamepad: winit has none on the PC. XInput on Windows.
+gilrs = { version = "^0.11" }
+# The player's local time in the save windows (`saves_ui::Ctx::fmt_time`).
+chrono = { version = "^0.4", default-features = false, features = ["clock"] }

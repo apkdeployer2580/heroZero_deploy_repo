@@ -1,0 +1,46 @@
+# ── NO [target] LINKER BLOCKS ANY MORE (2026-09-04, 순서표 #6) ───────────────
+# This file used to pin both android linkers to absolute paths under one specific
+# user's home (`C:\Users\<user>\AppData\Local\Android\Sdk\ndk\25.1.8937393\…`), which is
+# the kind of single-machine assumption the build scripts were already cleaned of.
+# They were also DEAD: `build_android.ps1` goes through `cargo ndk`, which supplies
+# the linker itself, and `build_probe.ps1` only ever builds the host target. Removed
+# rather than rewritten, because there is no portable way to spell an absolute path
+# here — cargo does not expand environment variables in `linker`.
+#
+# ⚠ WHAT IS LOST, so a future session does not rediscover it the hard way: these were
+# the ONLY declaration of the **armv7** linker. `abiFilters` ships arm64 only today,
+# so nothing references it; if the 32-bit ABI is ever switched back on the linker has
+# to come from cargo-ndk (it does) or be declared again. For the record the two tools
+# were under `<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/`:
+#     aarch64-linux-android24-clang.cmd
+#     armv7a-linux-androideabi24-clang.cmd
+# They pinned API 24; gradle's own minSdk is 26, which is the binding one either way.
+#
+# ⚠ Removing them does NOT make host builds fine — see the dlltool note below; a bare
+# `cargo build -p wie_probe` still fails.
+
+# NOTE (host dlltool): on this windows-gnu host, raw-dylib import libs need
+# `dlltool.exe`, which the bundled gnu toolchain does not surface on PATH. This bites
+# BOTH builds, not just android:
+#   * android  — host build-deps (cc -> windows-sys, getrandom) pull it in
+#   * host     — parking_lot_core -> windows-targets does; measured 2026-08-28,
+#                `cargo build --release -p wie_probe` dies with
+#                "error calling dlltool 'dlltool.exe': program not found".
+#
+# ⛔ The `self-contained` PATH entry this note used to recommend DOES NOT WORK. The
+# GNU dlltool shipped there shells out to `as`, which the toolchain does not ship —
+# see tools/dlltool_shim.rs:19-21. And renaming llvm-dlltool to `dlltool` is not
+# enough either: rustc picks the GNU flag set from the tool's FILE NAME and then
+# passes `--temp-prefix`, which llvm-dlltool rejects.
+#
+# ★ 2026-09-04: the wrapper's INGREDIENT moved too. The rustup gnu toolchain no
+# longer ships `llvm-dlltool.exe` at all (that bin dir now holds only rust-lld,
+# rust-objcopy and `self-contained/dlltool.exe`). Both build scripts now fall back to
+# the NDK's `llvm-ar.exe`, which IS llvm-dlltool when copied under that name —
+# llvm-ar/llvm-lib/llvm-ranlib/llvm-dlltool are one multicall binary keyed on argv[0].
+#
+# target.<host>.rustflags does not reach build-dependencies, so this cannot be fixed
+# from this file at all. The fix is a real wrapper (tools/dlltool_shim.rs) put on
+# PATH by the build scripts:
+#   .\build_android.ps1     android APK
+#   .\build_probe.ps1       host wie_probe (headless loop) — add -Run to boot hero2

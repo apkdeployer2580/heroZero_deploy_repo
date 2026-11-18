@@ -1,0 +1,18 @@
+[package]
+name = "hz_render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Host-only tool (Phase 4b, 2026-10-22): renders a Standard MIDI File out of the game jar through
+# oxisynth + a General MIDI SoundFont to a WAV the app ships as a RENDITION of that file — the
+# music thread plays the WAV when the game starts the MIDI (`hz_android::music`). The one MIDI
+# in 영웅서기 Zero is `/snd/b/15`, a 3.7 s fanfare; a synth and a 10 MB font in the APK for that
+# alone was not worth it (user decision 2026-10-22), and oxisynth is LGPL-2.1 — which does not
+# reach the APK this way: only its OUTPUT ships. Run by build_android.ps1 when the font is found.
+#
+# The output is derived game content: gitignored, never committed.
+
+[dependencies]
+oxisynth = { version = "0.1", features = ["sf3"] }
+zip = { version = "^8.6", features = ["deflate"], default-features = false }

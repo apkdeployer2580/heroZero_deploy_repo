@@ -1,0 +1,23 @@
+[package]
+name = "hz_java"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# The host side of 영웅서기 Zero's JVM, shared by hz_probe and hz_android: the player's game
+# options (the 「추가 설정」 page in the game's own 환경설정) and the `net/wie/hz/Hooks` class
+# the hz_patches hook patches call. Game state is read by JVM field NAME, never by address.
+
+[dependencies]
+async-trait = { version = "^0.1" }
+tracing = { version = "^0.1" }
+# The world map's place names to the game's EUC-KR (Phase 7-3; already in the lock via the graph).
+encoding_rs = { version = "0.8" }
+
+hz_patches = { path = "../hz_patches" }
+
+# Same git deps as the vendored crates -> the workspace [patch] redirects them to vendor/.
+java_class_proto = { git = "https://github.com/dlunch/RustJava.git" }
+java_constants = { git = "https://github.com/dlunch/RustJava.git" }
+jvm = { git = "https://github.com/dlunch/RustJava.git" }
+wie_jvm_support = { git = "https://github.com/dlunch/wie.git" }
