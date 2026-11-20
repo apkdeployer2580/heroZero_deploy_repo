@@ -119,3 +119,19 @@ python -I tools_re/api_gap.py android_app\app\src\main\assets\herozero.jar      
 | `hz_render/` | 빌드 도구 — 팡파르 MIDI 를 사운드폰트로 WAV 렌더 |
 | `vendor/` | wie · rustjava · arm32_cpu · softbuffer · oxisynth 포크 (`UPSTREAM.txt`) |
 | `tools/` · `tools_re/` | 성능·지연 측정, 아이템·밸런스 시험, 자산 준비, 맵·드랍표·월드맵 생성, 바이트코드 확인 |
+
+<!-- release-section -->
+## 최신 릴리스 (APK)
+
+**[최신 APK 받기 → Releases](https://github.com/apkdeployer2580/heroZero_deploy_repo/releases/latest)**
+
+| 판 | 파일 | versionCode |
+|---|---|---|
+| 릴리스 | `herozero_0.1.0.64.apk` | 64 |
+
+**이미 설치해서 하던 분 — 세이브를 그대로 이어 하려면**
+
+* 앱을 **지우지 말고** 받은 APK 를 그대로 설치하세요. 업데이트로 덮어 설치되고 세이브가 그대로 남습니다.
+* ⚠ 앱을 지우면 세이브도 함께 지워지고 되살릴 수 없습니다.
+* 「앱이 설치되지 않았습니다」가 뜨면 서명이 다른 APK(예: 이 소스로 직접 빌드한 APK)가 깔려 있는 것입니다. 그 위에는 공식 APK 를 덮어 설치할 수 없고, 지우면 세이브가 사라집니다.
+* 공식 APK 의 서명 인증서 SHA-256: `23abac88934888f56cdacb5297a114b3b9f019ab95005cc20d60869413a1de08`
